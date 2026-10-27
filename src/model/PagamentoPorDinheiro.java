@@ -1,27 +1,29 @@
 package model;
 
-public class PagamentoPorDinheiro implements Pagamento {
-    private final double valorRecebido;
+import java.math.BigDecimal;
 
-    public PagamentoPorDinheiro(double valorRecebido) {
-        if (valorRecebido <= 0) {
+public class PagamentoPorDinheiro implements Pagamento {
+    private final BigDecimal valorRecebido;
+
+    public PagamentoPorDinheiro(BigDecimal valorRecebido) {
+        if (valorRecebido == null || valorRecebido.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("O valor recebido deve ser maior que zero.");
         }
         this.valorRecebido = valorRecebido;
     }
 
     @Override
-    public void processarPagamento(double valor) {
-        if (valor <= 0) {
+    public void processarPagamento(BigDecimal valor) {
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("O valor do pagamento deve ser maior que zero.");
         }
-        if (valorRecebido < valor) {
+        if (valorRecebido.compareTo(valor) < 0) {
             throw new IllegalStateException(
-                    String.format("Valor recebido insuficiente. Faltam R$ %.2f", valor - valorRecebido)
+                    String.format("Valor recebido insuficiente. Faltam R$ %.2f", valor.subtract(valorRecebido))
             );
         }
 
-        double troco = valorRecebido - valor;
+        BigDecimal troco = valorRecebido.subtract(valor);
         System.out.printf("Pagamento em dinheiro aprovado. Troco: R$ %.2f%n", troco);
     }
 

@@ -1,15 +1,23 @@
 package model;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 public class ProdutoPorPeso extends Produto {
 
-    public ProdutoPorPeso(long id, String nome, double precoPorKg, double estoqueEmKg) {
+    public ProdutoPorPeso(long id, String nome, BigDecimal precoPorKg, BigDecimal estoqueEmKg) {
         super(id, nome, precoPorKg, estoqueEmKg);
     }
 
+    public ProdutoPorPeso(String nome, BigDecimal precoPorKg, BigDecimal estoqueEmKg) {
+        this(0, nome, precoPorKg, estoqueEmKg);
+    }
+
     @Override
-    public double calcularPrecoVenda(double quantidadeEmKg) {
+    public BigDecimal calcularPrecoVenda(BigDecimal quantidadeEmKg) {
         validarQuantidade(quantidadeEmKg);
-        return getPreco() * quantidadeEmKg;
+        // Preço por kg × kg, arredondado para centavos.
+        return getPreco().multiply(quantidadeEmKg).setScale(2, RoundingMode.HALF_UP);
     }
 
     @Override

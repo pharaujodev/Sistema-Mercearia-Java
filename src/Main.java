@@ -1,3 +1,6 @@
+import bd.ClienteDAO;
+import bd.ProdutoDAO;
+import bd.VendaDAO;
 import model.Cliente;
 import model.ItemVenda;
 import model.Pagamento;
@@ -8,14 +11,10 @@ import model.Produto;
 import model.ProdutoPorPeso;
 import model.ProdutoPorUnidade;
 import model.Venda;
-import repository.ClienteRepository;
-import repository.ClienteRepositoryMemoria;
-import repository.ProdutoRepository;
-import repository.ProdutoRepositoryMemoria;
-import repository.VendaRepository;
-import repository.VendaRepositoryMemoria;
 import service.VendaService;
 
+import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -23,25 +22,20 @@ import java.util.Scanner;
 public class Main {
     private static final Scanner scanner = new Scanner(System.in);
 
-    private static ProdutoRepository produtoRepository;
-    private static ClienteRepository clienteRepository;
+    private static ProdutoDAO produtoDAO;
+    private static ClienteDAO clienteDAO;
     private static VendaService vendaService;
 
-    private static long proximoProdutoId = 1;
-    private static long proximoClienteId = 1;
-
     public static void main(String[] args) {
-        produtoRepository = new ProdutoRepositoryMemoria();
-        clienteRepository = new ClienteRepositoryMemoria();
-        VendaRepository vendaRepository = new VendaRepositoryMemoria();
+        produtoDAO = new ProdutoDAO();
+        clienteDAO = new ClienteDAO();
+        VendaDAO vendaDAO = new VendaDAO();
 
         vendaService = new VendaService(
-                produtoRepository,
-                clienteRepository,
-                vendaRepository
+                produtoDAO,
+                clienteDAO,
+                vendaDAO
         );
-
-        carregarDadosDeExemplo();
 
         int opcao = -1;
 
@@ -68,6 +62,8 @@ public class Main {
                 }
             } catch (IllegalArgumentException | IllegalStateException e) {
                 System.out.println("Erro: " + e.getMessage());
+            } catch (SQLException e) {
+                System.out.println("Erro no banco de dados: " + e.getMessage());
             }
         }
 
@@ -76,7 +72,7 @@ public class Main {
 
     private static void exibirMenuPrincipal() {
         System.out.println("\n============================");
-        System.out.println("      SISTEMA MERCEARIA");
+        System.out.println("      SISTEMA MERCATTO");
         System.out.println("============================");
         System.out.println("1 - Produtos");
         System.out.println("2 - Clientes");
@@ -84,7 +80,7 @@ public class Main {
         System.out.println("0 - Sair");
     }
 
-    private static void menuProdutos() {
+    private static void menuProdutos() throws SQLException {
         int opcao = -1;
 
         while (opcao != 0) {
@@ -93,7 +89,8 @@ public class Main {
             System.out.println("2 - Listar produtos");
             System.out.println("3 - Buscar produto por ID");
             System.out.println("4 - Adicionar estoque");
-            System.out.println("5 - Remover produto");
+            System.out.println("5 - Atualizar produto");
+            System.out.println("6 - Remover produto");
             System.out.println("0 - Voltar");
 
             opcao = lerInt("Escolha uma opção: ");
@@ -113,6 +110,9 @@ public class Main {
                         adicionarEstoque();
                         break;
                     case 5:
+                        atualizarProduto();
+                        break;
+                    case 6:
                         removerProduto();
                         break;
                     case 0:
@@ -126,7 +126,7 @@ public class Main {
         }
     }
 
-    private static void menuClientes() {
+    private static void menuClientes() throws SQLException {
         int opcao = -1;
 
         while (opcao != 0) {
@@ -134,7 +134,8 @@ public class Main {
             System.out.println("1 - Cadastrar cliente");
             System.out.println("2 - Listar clientes");
             System.out.println("3 - Buscar cliente por ID");
-            System.out.println("4 - Remover cliente");
+            System.out.println("4 - Atualizar cliente");
+            System.out.println("5 - Remover cliente");
             System.out.println("0 - Voltar");
 
             opcao = lerInt("Escolha uma opção: ");
@@ -151,6 +152,9 @@ public class Main {
                         buscarCliente();
                         break;
                     case 4:
+                        atualizarCliente();
+                        break;
+                    case 5:
                         removerCliente();
                         break;
                     case 0:
@@ -164,7 +168,7 @@ public class Main {
         }
     }
 
-    private static void menuVendas() {
+    private static void menuVendas() throws SQLException {
         int opcao = -1;
 
         while (opcao != 0) {
@@ -198,7 +202,7 @@ public class Main {
         }
     }
 
-    private static void cadastrarProduto() {
+    private static void cadastrarProduto() throws SQLException {
         System.out.println("\nTipo do produto:");
         System.out.println("1 - Produto por unidade");
         System.out.println("2 - Produto por peso");
@@ -208,25 +212,23 @@ public class Main {
         Produto produto;
 
         if (tipo == 1) {
-            double preco = lerDouble("Preço por unidade: R$ ");
-            int estoque = lerInt("Estoque inicial (unidades): ");
-            produto = new ProdutoPorUnidade(proximoProdutoId, nome, preco, estoque);
+            BigDecimal preco = lerDecimal("Preço por unidade: R$ ");
+            BigDecimal estoque = BigDecimal.valueOf(lerInt("Estoque inicial (unidades): "));
+            produto = new ProdutoPorUnidade(nome, preco, estoque);
         } else if (tipo == 2) {
-            double preco = lerDouble("Preço por kg: R$ ");
-            double estoqueKg = lerDouble("Estoque inicial (kg): ");
-            produto = new ProdutoPorPeso(proximoProdutoId, nome, preco, estoqueKg);
+            BigDecimal preco = lerDecimal("Preço por kg: R$ ");
+            BigDecimal estoqueKg = lerDecimal("Estoque inicial (kg): ");
+            produto = new ProdutoPorPeso(nome, preco, estoqueKg);
         } else {
             throw new IllegalArgumentException("Tipo de produto inválido.");
         }
 
-        produtoRepository.salvar(produto);
-        proximoProdutoId++;
-
+        produtoDAO.create(produto);
         System.out.println("Produto cadastrado com sucesso. ID: " + produto.getId());
     }
 
-    private static void listarProdutos() {
-        List<Produto> produtos = produtoRepository.listarTodos();
+    private static void listarProdutos() throws SQLException {
+        List<Produto> produtos = produtoDAO.readAll();
 
         System.out.println("\n--- PRODUTOS ---");
 
@@ -239,36 +241,73 @@ public class Main {
         }
     }
 
-    private static void buscarProduto() {
+    private static void buscarProduto() throws SQLException {
         long id = lerLong("ID do produto: ");
         Produto produto = obterProduto(id);
         exibirProduto(produto);
     }
 
-    private static void adicionarEstoque() {
+    private static void adicionarEstoque() throws SQLException {
         listarProdutos();
 
         long id = lerLong("ID do produto: ");
         Produto produto = obterProduto(id);
-        double quantidade = lerDouble(
+        BigDecimal quantidade = lerDecimal(
                 "Quantidade a adicionar (" + produto.getUnidadeMedida() + "): "
         );
 
         produto.adicionarEstoque(quantidade);
-        produtoRepository.salvar(produto);
+
+        if (!produtoDAO.update(produto)) {
+            throw new IllegalStateException("Não foi possível atualizar o estoque.");
+        }
 
         System.out.println("Estoque atualizado com sucesso.");
     }
 
-    private static void removerProduto() {
+    private static void atualizarProduto() throws SQLException {
+        listarProdutos();
+
+        long id = lerLong("ID do produto que deseja atualizar: ");
+        Produto produtoAtual = obterProduto(id);
+
+        System.out.println("\nDados atuais:");
+        exibirProduto(produtoAtual);
+
+        String nome = lerTexto("Novo nome: ");
+        BigDecimal preco = lerDecimal("Novo preço: R$ ");
+        Produto produtoAtualizado;
+
+        if (produtoAtual instanceof ProdutoPorUnidade) {
+            BigDecimal estoque = BigDecimal.valueOf(lerInt("Novo estoque (unidades): "));
+            produtoAtualizado = new ProdutoPorUnidade(id, nome, preco, estoque);
+        } else {
+            BigDecimal estoqueKg = lerDecimal("Novo estoque (kg): ");
+            produtoAtualizado = new ProdutoPorPeso(id, nome, preco, estoqueKg);
+        }
+
+        if (!produtoDAO.update(produtoAtualizado)) {
+            throw new IllegalStateException("Não foi possível atualizar o produto.");
+        }
+
+        System.out.println("Produto atualizado com sucesso.");
+    }
+
+    private static void removerProduto() throws SQLException {
         listarProdutos();
         long id = lerLong("ID do produto que deseja remover: ");
-        produtoRepository.remover(id);
+
+        // Se o produto já tiver vendas, o DAO lança IllegalStateException
+        // com uma mensagem explicando o motivo.
+        if (!produtoDAO.delete(id)) {
+            throw new IllegalArgumentException("Produto não encontrado.");
+        }
+
         System.out.println("Produto removido com sucesso.");
     }
 
-    private static Produto obterProduto(long id) {
-        Produto produto = produtoRepository.buscarPorId(id);
+    private static Produto obterProduto(long id) throws SQLException {
+        Produto produto = produtoDAO.readById(id);
 
         if (produto == null) {
             throw new IllegalArgumentException("Produto não encontrado.");
@@ -277,28 +316,20 @@ public class Main {
         return produto;
     }
 
-    private static void cadastrarCliente() {
+    private static void cadastrarCliente() throws SQLException {
         String nome = lerTexto("Nome: ");
         String email = lerTexto("Email: ");
         String telefone = lerTexto("Telefone: ");
         String endereco = lerTexto("Endereço: ");
 
-        Cliente cliente = new Cliente(
-                proximoClienteId,
-                nome,
-                email,
-                telefone,
-                endereco
-        );
-
-        clienteRepository.salvar(cliente);
-        proximoClienteId++;
+        Cliente cliente = new Cliente(nome, email, telefone, endereco);
+        clienteDAO.create(cliente);
 
         System.out.println("Cliente cadastrado com sucesso. ID: " + cliente.getId());
     }
 
-    private static void listarClientes() {
-        List<Cliente> clientes = clienteRepository.listarTodos();
+    private static void listarClientes() throws SQLException {
+        List<Cliente> clientes = clienteDAO.readAll();
 
         System.out.println("\n--- CLIENTES ---");
 
@@ -311,21 +342,54 @@ public class Main {
         }
     }
 
-    private static void buscarCliente() {
+    private static void buscarCliente() throws SQLException {
         long id = lerLong("ID do cliente: ");
         Cliente cliente = obterCliente(id);
         exibirCliente(cliente);
     }
 
-    private static void removerCliente() {
+    private static void atualizarCliente() throws SQLException {
+        listarClientes();
+
+        long id = lerLong("ID do cliente que deseja atualizar: ");
+        Cliente clienteAtual = obterCliente(id);
+
+        System.out.println("\nDados atuais:");
+        exibirCliente(clienteAtual);
+
+        String nome = lerTexto("Novo nome: ");
+        String email = lerTexto("Novo email: ");
+        String telefone = lerTexto("Novo telefone: ");
+        String endereco = lerTexto("Novo endereço: ");
+
+        Cliente clienteAtualizado = new Cliente(
+                id,
+                nome,
+                email,
+                telefone,
+                endereco
+        );
+
+        if (!clienteDAO.update(clienteAtualizado)) {
+            throw new IllegalStateException("Não foi possível atualizar o cliente.");
+        }
+
+        System.out.println("Cliente atualizado com sucesso.");
+    }
+
+    private static void removerCliente() throws SQLException {
         listarClientes();
         long id = lerLong("ID do cliente que deseja remover: ");
-        clienteRepository.remover(id);
+
+        if (!clienteDAO.delete(id)) {
+            throw new IllegalArgumentException("Cliente não encontrado.");
+        }
+
         System.out.println("Cliente removido com sucesso.");
     }
 
-    private static Cliente obterCliente(long id) {
-        Cliente cliente = clienteRepository.buscarPorId(id);
+    private static Cliente obterCliente(long id) throws SQLException {
+        Cliente cliente = clienteDAO.readById(id);
 
         if (cliente == null) {
             throw new IllegalArgumentException("Cliente não encontrado.");
@@ -334,12 +398,12 @@ public class Main {
         return cliente;
     }
 
-    private static void realizarVenda() {
-        if (clienteRepository.listarTodos().isEmpty()) {
+    private static void realizarVenda() throws SQLException {
+        if (clienteDAO.readAll().isEmpty()) {
             throw new IllegalStateException("Cadastre pelo menos um cliente antes de realizar uma venda.");
         }
 
-        if (produtoRepository.listarTodos().isEmpty()) {
+        if (produtoDAO.readAll().isEmpty()) {
             throw new IllegalStateException("Cadastre pelo menos um produto antes de realizar uma venda.");
         }
 
@@ -360,7 +424,7 @@ public class Main {
                 if (produtoJaFoiAdicionado(carrinho, produtoId)) {
                     System.out.println("Esse produto já foi adicionado ao carrinho.");
                 } else {
-                    double quantidade = lerDouble(
+                    BigDecimal quantidade = lerDecimal(
                             "Quantidade de " + produto.getNome()
                                     + " (" + produto.getUnidadeMedida() + "): "
                     );
@@ -375,7 +439,7 @@ public class Main {
             }
         }
 
-        double total = calcularTotalCarrinho(carrinho);
+        BigDecimal total = calcularTotalCarrinho(carrinho);
         Pagamento pagamento = escolherFormaPagamento(total);
         Venda venda = vendaService.realizarVenda(clienteId, carrinho, pagamento);
 
@@ -393,17 +457,17 @@ public class Main {
         return false;
     }
 
-    private static double calcularTotalCarrinho(List<ItemVenda> carrinho) {
-        double total = 0;
+    private static BigDecimal calcularTotalCarrinho(List<ItemVenda> carrinho) {
+        BigDecimal total = BigDecimal.ZERO;
 
         for (ItemVenda item : carrinho) {
-            total += item.getSubtotal();
+            total = total.add(item.getSubtotal());
         }
 
         return total;
     }
 
-    private static Pagamento escolherFormaPagamento(double total) {
+    private static Pagamento escolherFormaPagamento(BigDecimal total) {
         System.out.printf("%nTotal da compra: R$ %.2f%n", total);
         System.out.println("1 - PIX");
         System.out.println("2 - Cartão");
@@ -420,14 +484,14 @@ public class Main {
         }
 
         if (opcao == 3) {
-            double valorRecebido = lerDouble("Valor recebido: R$ ");
+            BigDecimal valorRecebido = lerDecimal("Valor recebido: R$ ");
             return new PagamentoPorDinheiro(valorRecebido);
         }
 
         throw new IllegalArgumentException("Forma de pagamento inválida.");
     }
 
-    private static void listarVendas() {
+    private static void listarVendas() throws SQLException {
         List<Venda> vendas = vendaService.listarTodos();
 
         System.out.println("\n--- VENDAS ---");
@@ -441,7 +505,7 @@ public class Main {
         }
     }
 
-    private static void buscarVenda() {
+    private static void buscarVenda() throws SQLException {
         long id = lerLong("ID da venda: ");
         Venda venda = vendaService.buscarPorId(id);
         exibirVenda(venda);
@@ -522,15 +586,15 @@ public class Main {
         return valor;
     }
 
-    private static double lerDouble(String mensagem) {
-        double valor = 0;
+    private static BigDecimal lerDecimal(String mensagem) {
+        BigDecimal valor = BigDecimal.ZERO;
         boolean valido = false;
 
         while (!valido) {
             try {
                 System.out.print(mensagem);
                 String texto = scanner.nextLine().trim().replace(',', '.');
-                valor = Double.parseDouble(texto);
+                valor = new BigDecimal(texto); // aceita 12,50 ou 12.50
                 valido = true;
             } catch (NumberFormatException e) {
                 System.out.println("Digite um número válido.");
@@ -543,44 +607,5 @@ public class Main {
     private static String lerTexto(String mensagem) {
         System.out.print(mensagem);
         return scanner.nextLine().trim();
-    }
-
-    private static void carregarDadosDeExemplo() {
-        Produto arroz = new ProdutoPorUnidade(
-                proximoProdutoId,
-                "Arroz 5kg",
-                25.90,
-                20
-        );
-        produtoRepository.salvar(arroz);
-        proximoProdutoId++;
-
-        Produto feijao = new ProdutoPorUnidade(
-                proximoProdutoId,
-                "Feijão 1kg",
-                8.50,
-                30
-        );
-        produtoRepository.salvar(feijao);
-        proximoProdutoId++;
-
-        Produto queijo = new ProdutoPorPeso(
-                proximoProdutoId,
-                "Queijo Mussarela",
-                42.90,
-                12.5
-        );
-        produtoRepository.salvar(queijo);
-        proximoProdutoId++;
-
-        Cliente cliente = new Cliente(
-                proximoClienteId,
-                "Cliente Exemplo",
-                "cliente@email.com",
-                "(62) 99999-9999",
-                "Goiânia - GO"
-        );
-        clienteRepository.salvar(cliente);
-        proximoClienteId++;
     }
 }

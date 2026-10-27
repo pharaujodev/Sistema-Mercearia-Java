@@ -1,15 +1,15 @@
 package model;
 
 public class Cliente {
-    private final long id;
+    private long id;
     private final String nome;
     private final String email;
     private final String telefone;
     private final String endereco;
 
     public Cliente(long id, String nome, String email, String telefone, String endereco) {
-        if (id <= 0) {
-            throw new IllegalArgumentException("ID inválido. O ID deve ser um número positivo.");
+        if (id < 0) {
+            throw new IllegalArgumentException("ID inválido. O ID não pode ser negativo.");
         }
         if (nome == null || nome.isBlank()) {
             throw new IllegalArgumentException("Nome inválido. O nome não pode ser nulo ou vazio.");
@@ -31,8 +31,19 @@ public class Cliente {
         this.endereco = endereco;
     }
 
+    public Cliente(String nome, String email, String telefone, String endereco) {
+        this(0, nome, email, telefone, endereco);
+    }
+
     public long getId() {
         return id;
+    }
+
+    public void setId(long id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException("ID inválido. O ID deve ser maior que zero.");
+        }
+        this.id = id;
     }
 
     public String getNome() {
@@ -49,5 +60,11 @@ public class Cliente {
 
     public String getEndereco() {
         return endereco;
+    }
+
+    @Override
+    public String toString() {
+        return "Cliente [ID=" + id + ", Nome=" + nome + ", Email=" + email
+                + ", Telefone=" + telefone + ", Endereço=" + endereco + "]";
     }
 }

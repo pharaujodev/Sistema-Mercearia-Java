@@ -1,32 +1,34 @@
 package service;
 
+import bd.ClienteDAO;
+import bd.ProdutoDAO;
+import bd.VendaDAO;
 import model.Cliente;
 import model.ItemVenda;
 import model.Pagamento;
+import model.Produto;
 import model.Venda;
-import repository.ClienteRepository;
-import repository.ProdutoRepository;
-import repository.VendaRepository;
 
+import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.List;
 
 public class VendaService {
-    private final ProdutoRepository produtoRepository;
-    private final ClienteRepository clienteRepository;
-    private final VendaRepository vendaRepository;
-    private long proximoId = 1;
+    private final ProdutoDAO produtoDAO;
+    private final ClienteDAO clienteDAO;
+    private final VendaDAO vendaDAO;
 
     public VendaService(
-            ProdutoRepository produtoRepository,
-            ClienteRepository clienteRepository,
-            VendaRepository vendaRepository
+            ProdutoDAO produtoDAO,
+            ClienteDAO clienteDAO,
+            VendaDAO vendaDAO
     ) {
-        this.produtoRepository = produtoRepository;
-        this.clienteRepository = clienteRepository;
-        this.vendaRepository = vendaRepository;
+        this.produtoDAO = produtoDAO;
+        this.clienteDAO = clienteDAO;
+        this.vendaDAO = vendaDAO;
     }
 
-    public Venda realizarVenda(long clienteId, List<ItemVenda> itens, Pagamento pagamento) {
+    public Venda realizarVenda(long clienteId, List<ItemVenda> itens, Pagamento pagamento) throws SQLException {
         if (itens == null || itens.isEmpty()) {
             throw new IllegalArgumentException("A venda deve possuir pelo menos um item.");
         }
@@ -35,30 +37,35 @@ public class VendaService {
             throw new IllegalArgumentException("A forma de pagamento é obrigatória.");
         }
 
-        Cliente cliente = clienteRepository.buscarPorId(clienteId);
+        Cliente cliente = clienteDAO.readById(clienteId);
 
         if (cliente == null) {
             throw new IllegalArgumentException("Cliente não encontrado.");
         }
 
-        Venda venda = new Venda(proximoId, cliente, itens, pagamento.getDescricao());
-        double total = venda.calcularValorTotal();
+        Venda venda = new Venda(cliente, itens, pagamento.getDescricao());
+        BigDecimal total = venda.calcularValorTotal();
+
+        for (ItemVenda item : itens) {
+            Produto atual = produtoDAO.readById(item.getProduto().getId());
+
+            if (atual == null) {
+                throw new IllegalArgumentException("Produto " + item.getProduto().getNome() + " não existe mais.");
+            }
+
+            if (!atual.possuiEstoque(item.getQuantidade())) {
+                throw new IllegalStateException("Estoque insuficiente para o produto " + atual.getNome() + ".");
+            }
+        }
 
         pagamento.processarPagamento(total);
 
-        for (ItemVenda item : itens) {
-            item.getProduto().removerEstoque(item.getQuantidade());
-            produtoRepository.salvar(item.getProduto());
-        }
-
-        vendaRepository.salvar(venda);
-        proximoId++;
-
+        vendaDAO.create(venda);
         return venda;
     }
 
-    public Venda buscarPorId(long id) {
-        Venda venda = vendaRepository.buscarPorId(id);
+    public Venda buscarPorId(long id) throws SQLException {
+        Venda venda = vendaDAO.readById(id);
 
         if (venda == null) {
             throw new IllegalArgumentException("Venda não encontrada.");
@@ -67,7 +74,7 @@ public class VendaService {
         return venda;
     }
 
-    public List<Venda> listarTodos() {
-        return vendaRepository.listarTodos();
+    public List<Venda> listarTodos() throws SQLException {
+        return vendaDAO.readAll();
     }
 }

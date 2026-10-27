@@ -1,6 +1,8 @@
 package model;
 
+import java.math.BigDecimal;
+
 public interface Pagamento {
-    void processarPagamento(double valor);
+    void processarPagamento(BigDecimal valor);
     String getDescricao();
 }

@@ -1,72 +1,34 @@
-# Projeto Java Mercearia
+# Mercatto - JDBC / Aula 5
 
-Projeto acadêmico em Java desenvolvido para demonstrar os principais conceitos de Programação Orientada a Objetos de forma simples.
+Versão do projeto adaptada para comunicação com MySQL seguindo o padrão proposto:
 
-## Estrutura do projeto
+- `model`: classes do domínio.
+- `bd/ConexaoBD.java`: centraliza a conexão JDBC.
+- `bd/ProdutoDAO.java`: CRUD de produtos.
+- `bd/ClienteDAO.java`: CRUD de clientes.
+- `bd/VendaDAO.java`: grava e lê vendas. A gravação (venda + itens + baixa de estoque) acontece em uma única transação.
+- `bd/ItemVendaDAO.java`: grava e lê os itens de uma venda, usando a conexão/transação do `VendaDAO`.
+- `service/VendaService.java`: mantém a regra de negócio da venda.
+- `Main.java`: controla menus e chama DAO/Service, sem conter SQL.
 
-```text
-src/
-├── model/
-│   ├── Cliente.java
-│   ├── Produto.java
-│   ├── ProdutoPorUnidade.java
-│   ├── ProdutoPorPeso.java
-│   ├── ItemVenda.java
-│   ├── Venda.java
-│   ├── Pagamento.java
-│   ├── PagamentoPorPix.java
-│   ├── PagamentoPorCartao.java
-│   └── PagamentoPorDinheiro.java
-├── repository/
-│   ├── ProdutoRepository.java
-│   ├── ProdutoRepositoryMemoria.java
-│   ├── ClienteRepository.java
-│   ├── ClienteRepositoryMemoria.java
-│   ├── VendaRepository.java
-│   └── VendaRepositoryMemoria.java
-├── service/
-│   └── VendaService.java
-└── Main.java
-```
+## Antes de executar
 
-A estrutura foi mantida pequena de propósito. O cadastro e a consulta de produtos e clientes usam os repositórios diretamente. O `VendaService` existe porque realizar uma venda envolve várias regras ao mesmo tempo.
+1. Execute `sql/mercearia.sql` no MySQL.
+2. Baixe o MySQL Connector/J e coloque o `.jar` na pasta `lib`.
+3. Adicione o `.jar` ao Build Path/Classpath da IDE.
+4. Em `src/bd/ConexaoBD.java`, substitua `SUA_SENHA` pela senha do MySQL.
 
-## Conceitos utilizados
-
-- **Abstração:** `Produto` é uma classe abstrata.
-- **Encapsulamento:** os atributos são privados e o estoque é alterado por métodos da própria classe.
-- **Herança:** `ProdutoPorUnidade` e `ProdutoPorPeso` herdam de `Produto`.
-- **Polimorfismo:** os tipos de produto implementam `calcularPrecoVenda` de acordo com sua regra, e as formas de pagamento implementam o mesmo contrato `Pagamento`.
-- **Interface:** `Pagamento`, `ProdutoRepository`, `ClienteRepository` e `VendaRepository`.
-- **Tratamento de exceções:** `try/catch`, `IllegalArgumentException`, `IllegalStateException` e `NumberFormatException`.
-
-## Armazenamento atual e banco de dados futuro
-
-Os repositórios em memória usam `ArrayList`:
+A URL configurada é:
 
 ```text
-Repository -> RepositoryMemoria -> ArrayList
+jdbc:mysql://localhost:3306/mercearia
 ```
 
-As regras usam as interfaces de repositório. No futuro, uma implementação de banco pode substituir a implementação em memória:
 
-```text
-Repository -> RepositoryBanco -> MySQL/PostgreSQL
-```
+## Funcionalidades
 
-Assim, não é necessário colocar banco de dados no projeto atual para deixar a arquitetura preparada para persistência futura.
+- Produtos: cadastrar, listar, buscar, adicionar estoque, atualizar e remover.
+- Clientes: cadastrar, listar, buscar, atualizar e remover.
+- Vendas: realizar, listar e buscar por ID.
 
-## Menu
-
-O programa usa menus simples com `while (opcao != 0)`, `if`, `for` e `switch`.
-
-Menu principal:
-
-```text
-1 - Produtos
-2 - Clientes
-3 - Vendas
-0 - Sair
-```
-
-O sistema permite cadastrar, listar, buscar e remover produtos e clientes, adicionar estoque, realizar vendas com vários itens, escolher a forma de pagamento e consultar vendas.
+As atualizações de produto e cliente utilizam os métodos `update()` de seus respectivos DAOs, mantendo o SQL fora do `Main`.
