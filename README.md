@@ -1,4 +1,4 @@
-# Mercatto - JDBC / Aula 5
+# Mercatto - JDBC 
 
 Versão do projeto adaptada para comunicação com MySQL seguindo o padrão proposto:
 
